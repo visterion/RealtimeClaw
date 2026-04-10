@@ -1,0 +1,103 @@
+configuration:
+  xai_api_key:
+    name: xAI API Key
+    description: Your xAI API key for the Realtime API (required)
+  realtime_provider:
+    name: Provider
+    description: Speech-to-speech provider
+  realtime_voice:
+    name: Voice
+    description: Voice name (e.g. eve, ara, rex, sal, leo for xAI)
+  realtime_transcription_model:
+    name: Transcription Model
+    description: Model for user speech transcription
+  input_audio_rate:
+    name: Input Audio Rate
+    description: Microphone sample rate in Hz
+  output_audio_rate:
+    name: Output Audio Rate
+    description: Speaker sample rate in Hz
+  vad_threshold:
+    name: VAD Threshold
+    description: Voice activity detection sensitivity (higher = louder audio required)
+  silence_duration_ms:
+    name: Silence Duration (ms)
+    description: Milliseconds of silence before a turn ends
+  prefix_padding_ms:
+    name: Prefix Padding (ms)
+    description: Audio prepended before detected speech starts
+  assistant_name:
+    name: Assistant Name
+    description: Display name for the assistant
+  assistant_languages:
+    name: Languages
+    description: Comma-separated language codes (e.g. de,en)
+  instructions:
+    name: System Instructions
+    description: Custom system prompt (overridden by Soul if set)
+  soul:
+    name: Soul
+    description: Personality and behavior (markdown, used when no OpenClaw)
+  identity:
+    name: Identity
+    description: Name, avatar, voice identity (markdown, used when no OpenClaw)
+  users:
+    name: Users
+    description: Family/user profiles (markdown, used when no OpenClaw)
+  ha_url:
+    name: Home Assistant URL
+    description: URL for direct HA tool calls (e.g. http://homeassistant.local:8123)
+  ha_token:
+    name: Home Assistant Token
+    description: Long-lived access token for HA API
+  openclaw_url:
+    name: OpenClaw URL
+    description: OpenClaw gateway URL (optional)
+  openclaw_token:
+    name: OpenClaw Token
+    description: OpenClaw gateway authentication token
+  openclaw_timeout_ms:
+    name: OpenClaw Timeout (ms)
+    description: Request timeout for OpenClaw API calls
+  eagle_enabled:
+    name: Enable Speaker ID
+    description: Enable Picovoice Eagle speaker identification
+  eagle_access_key:
+    name: Eagle Access Key
+    description: Picovoice API key for speaker identification
+  eagle_confidence_threshold:
+    name: Eagle Confidence Threshold
+    description: Minimum confidence for speaker identification (0.1-0.99)
+  eagle_identify_frames:
+    name: Eagle Identify Frames
+    description: Number of audio frames to analyze for identification
+  speaker_device_map:
+    name: Speaker Device Map (JSON)
+    description: Map device IDs to speaker names (e.g. {"kitchen":"alice"})
+  speaker_config:
+    name: Speaker Config (JSON)
+    description: Speaker metadata (e.g. {"alice":{"displayName":"Alice","contextKey":"alice"}})
+  speaker_max_levels:
+    name: Speaker Max Levels (JSON)
+    description: Maximum security level per speaker (e.g. {"alice":"owner"})
+  security_threshold_family:
+    name: Family Threshold
+    description: Confidence threshold for family security level
+  security_threshold_trusted:
+    name: Trusted Threshold
+    description: Confidence threshold for trusted security level
+  security_threshold_owner:
+    name: Owner Threshold
+    description: Confidence threshold for owner security level
+  tool_route_direct:
+    name: Direct Tool Patterns
+    description: Comma-separated glob patterns for directly executed tools
+  tool_route_reasoning:
+    name: Reasoning Tool Patterns
+    description: Comma-separated glob patterns for reasoning-routed tools
+  tool_route_dangerous:
+    name: Dangerous Tool Patterns
+    description: Comma-separated glob patterns for tools requiring approval
+  debug:
+    name: Debug Mode
+    description: Enable verbose WebSocket logging

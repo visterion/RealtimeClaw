@@ -1,0 +1,17 @@
+node_modules/
+dist/
+*.tsbuildinfo
+.env
+
+# Internal / AI agent files
+CLAUDE.md
+AGENTS.md
+.claude/
+.mcp.json
+
+# IDE
+.idea/
+.vscode/
+
+# Internal docs (dev-only)
+docs/

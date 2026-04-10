@@ -1,0 +1,61 @@
+{
+  "wyomingPort": 10300,
+  "assistantName": "Assistant",
+  "languages": ["de", "en"],
+  "realtime": {
+    "provider": "xai",
+    "voice": "rex"
+  },
+  "context": {
+    "soulMdPath": "./SOUL.md",
+    "memoryMdPath": "./MEMORY.md",
+    "summarizeAtTokenRatio": 0.80,
+    "maxContextTokens": 128000
+  },
+  "speaker": {
+    "deviceMap": {
+      "kitchen-satellite": "alice",
+      "living-room-satellite": "family"
+    },
+    "speakers": {
+      "alice": { "displayName": "Alice", "contextKey": "alice" },
+      "bob": { "displayName": "Bob", "contextKey": "bob" },
+      "charlie": { "displayName": "Charlie", "contextKey": "charlie" },
+      "dana": { "displayName": "Dana", "contextKey": "dana" }
+    }
+  },
+  "eagle": {
+    "enabled": true,
+    "voiceprintsDir": "./voiceprints",
+    "confidenceThreshold": 0.70,
+    "identifyFrames": 10
+  },
+  "security": {
+    "thresholds": { "family": 0.50, "trusted": 0.70, "owner": 0.90 },
+    "speakerMaxLevel": {
+      "alice": "owner",
+      "bob": "owner",
+      "charlie": "family",
+      "dana": "family"
+    }
+  },
+  "toolRouter": {
+    "direct": ["ha_*", "sonos_*", "spotify_*", "paperless_*", "calendar_*"],
+    "reasoning": ["request_reasoning"],
+    "dangerous": ["exec_*", "file_delete_*"],
+    "levelTools": {
+      "guest": ["ha_light_*", "sonos_*", "spotify_*"],
+      "family": ["ha_climate_*", "calendar_own"],
+      "trusted": ["paperless_titles_only", "calendar_all"],
+      "owner": ["paperless_full"]
+    }
+  },
+  "memory": {
+    "enabled": true
+  },
+  "openclaw": {
+    "url": "http://localhost:18789",
+    "token": "your-openclaw-gateway-token",
+    "timeoutMs": 10000
+  }
+}

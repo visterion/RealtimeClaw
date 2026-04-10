@@ -1,0 +1,68 @@
+{
+  "name": "realtime-claw",
+  "version": "0.1.0",
+  "description": "Wyoming Protocol ↔ Realtime Speech-to-Speech API bridge",
+  "type": "module",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "bin": {
+    "realtime-claw": "dist/index.js"
+  },
+  "files": [
+    "dist/",
+    "LICENSE",
+    "README.md",
+    ".env.example",
+    "config.example.json"
+  ],
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    }
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/visterion/RealtimeClaw.git"
+  },
+  "homepage": "https://github.com/visterion/RealtimeClaw#readme",
+  "bugs": {
+    "url": "https://github.com/visterion/RealtimeClaw/issues"
+  },
+  "scripts": {
+    "build": "tsc",
+    "start": "node dist/index.js",
+    "dev": "tsx src/index.ts",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "lint": "eslint src/ tests/",
+    "typecheck": "tsc --noEmit"
+  },
+  "keywords": [
+    "wyoming",
+    "realtime",
+    "speech-to-speech",
+    "voice-assistant",
+    "home-assistant"
+  ],
+  "license": "MIT",
+  "dependencies": {
+    "ws": "^8.18.0"
+  },
+  "optionalDependencies": {
+    "@picovoice/eagle-node": "^3.0.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.0.0",
+    "@types/ws": "^8.5.0",
+    "@typescript-eslint/eslint-plugin": "^8.0.0",
+    "@typescript-eslint/parser": "^8.0.0",
+    "eslint": "^9.0.0",
+    "tsx": "^4.19.0",
+    "typescript": "^5.7.0",
+    "vitest": "^3.0.0"
+  },
+  "engines": {
+    "node": ">=20.0.0"
+  }
+}

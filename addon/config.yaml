@@ -1,0 +1,94 @@
+name: RealtimeClaw
+description: >-
+  Wyoming Protocol to Realtime Speech-to-Speech bridge.
+  Connects Voice PE devices to xAI/OpenAI Realtime APIs
+  for sub-1s voice response with function calling.
+version: 0.1.0
+slug: realtimeclaw
+url: https://github.com/visterion/RealtimeClaw
+startup: application
+boot: auto
+init: false
+arch:
+  - amd64
+  - aarch64
+map:
+  - addon_config:rw
+ports:
+  10300/tcp: 10300
+ports_description:
+  10300/tcp: Wyoming Protocol TCP
+host_network: false
+image: ghcr.io/visterion/realtimeclaw-addon-{arch}
+
+options:
+  xai_api_key: ""
+  realtime_provider: "xai"
+  realtime_voice: "eve"
+  realtime_transcription_model: "grok-2-audio"
+  input_audio_rate: 16000
+  output_audio_rate: 16000
+  vad_threshold: 0.85
+  silence_duration_ms: 700
+  prefix_padding_ms: 333
+  assistant_name: "Jarvis"
+  assistant_languages: "de,en"
+  instructions: ""
+  soul: ""
+  identity: ""
+  users: ""
+  ha_url: ""
+  ha_token: ""
+  openclaw_url: ""
+  openclaw_token: ""
+  openclaw_timeout_ms: 10000
+  eagle_enabled: false
+  eagle_access_key: ""
+  eagle_confidence_threshold: 0.7
+  eagle_identify_frames: 10
+  speaker_device_map: "{}"
+  speaker_config: "{}"
+  speaker_max_levels: "{}"
+  security_threshold_family: 0.50
+  security_threshold_trusted: 0.70
+  security_threshold_owner: 0.90
+  tool_route_direct: "ha_*,sonos_*,spotify_*,paperless_*,calendar_*"
+  tool_route_reasoning: "request_reasoning"
+  tool_route_dangerous: "exec_*,file_delete_*"
+  debug: false
+
+schema:
+  xai_api_key: password
+  realtime_provider: list(xai|openai|inworld)
+  realtime_voice: str
+  realtime_transcription_model: str
+  input_audio_rate: list(8000|16000|22050|24000|32000|44100|48000)
+  output_audio_rate: list(8000|16000|22050|24000|32000|44100|48000)
+  vad_threshold: "float(0.1,0.99)"
+  silence_duration_ms: "int(0,10000)"
+  prefix_padding_ms: "int(0,10000)"
+  assistant_name: str
+  assistant_languages: str
+  instructions: str?
+  soul: str?
+  identity: str?
+  users: str?
+  ha_url: url?
+  ha_token: password?
+  openclaw_url: url?
+  openclaw_token: password?
+  openclaw_timeout_ms: "int(1000,60000)"
+  eagle_enabled: bool
+  eagle_access_key: password?
+  eagle_confidence_threshold: "float(0.1,0.99)"
+  eagle_identify_frames: "int(1,50)"
+  speaker_device_map: str?
+  speaker_config: str?
+  speaker_max_levels: str?
+  security_threshold_family: "float(0.1,0.99)"
+  security_threshold_trusted: "float(0.1,0.99)"
+  security_threshold_owner: "float(0.1,0.99)"
+  tool_route_direct: str
+  tool_route_reasoning: str
+  tool_route_dangerous: str
+  debug: bool

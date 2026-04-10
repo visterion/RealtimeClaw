@@ -1,0 +1,103 @@
+configuration:
+  xai_api_key:
+    name: xAI API-Schlüssel
+    description: Ihr xAI API-Schlüssel für die Realtime API (erforderlich)
+  realtime_provider:
+    name: Anbieter
+    description: Sprache-zu-Sprache Anbieter
+  realtime_voice:
+    name: Stimme
+    description: Stimmenname (z.B. eve, ara, rex, sal, leo für xAI)
+  realtime_transcription_model:
+    name: Transkriptionsmodell
+    description: Modell für die Transkription der Nutzereingabe
+  input_audio_rate:
+    name: Eingangs-Abtastrate
+    description: Mikrofon-Abtastrate in Hz
+  output_audio_rate:
+    name: Ausgangs-Abtastrate
+    description: Lautsprecher-Abtastrate in Hz
+  vad_threshold:
+    name: VAD-Schwellenwert
+    description: Empfindlichkeit der Sprachaktivitätserkennung (höher = lauteres Audio erforderlich)
+  silence_duration_ms:
+    name: Stille-Dauer (ms)
+    description: Millisekunden Stille bevor eine Sprechrunde endet
+  prefix_padding_ms:
+    name: Vorlauf-Padding (ms)
+    description: Audio, das vor dem erkannten Sprachbeginn eingefügt wird
+  assistant_name:
+    name: Assistentenname
+    description: Anzeigename des Assistenten
+  assistant_languages:
+    name: Sprachen
+    description: Kommagetrennte Sprachcodes (z.B. de,en)
+  instructions:
+    name: System-Anweisungen
+    description: Benutzerdefinierter System-Prompt (wird durch Soul überschrieben, falls gesetzt)
+  soul:
+    name: Soul
+    description: Persönlichkeit und Verhalten (Markdown, verwendet wenn kein OpenClaw)
+  identity:
+    name: Identität
+    description: Name, Avatar, Stimmidentität (Markdown, verwendet wenn kein OpenClaw)
+  users:
+    name: Nutzer
+    description: Familien-/Nutzerprofile (Markdown, verwendet wenn kein OpenClaw)
+  ha_url:
+    name: Home Assistant URL
+    description: URL für direkte HA-Werkzeugaufrufe (z.B. http://homeassistant.local:8123)
+  ha_token:
+    name: Home Assistant Token
+    description: Langzeit-Zugriffstoken für die HA-API
+  openclaw_url:
+    name: OpenClaw URL
+    description: OpenClaw Gateway-URL (optional)
+  openclaw_token:
+    name: OpenClaw Token
+    description: Authentifizierungstoken für das OpenClaw Gateway
+  openclaw_timeout_ms:
+    name: OpenClaw Timeout (ms)
+    description: Anfrage-Timeout für OpenClaw API-Aufrufe
+  eagle_enabled:
+    name: Sprecherkennung aktivieren
+    description: Picovoice Eagle Sprecherkennung aktivieren
+  eagle_access_key:
+    name: Eagle Zugriffsschlüssel
+    description: Picovoice API-Schlüssel für die Sprecherkennung
+  eagle_confidence_threshold:
+    name: Eagle Konfidenz-Schwellenwert
+    description: Mindestkonfidenz für die Sprecherkennung (0.1-0.99)
+  eagle_identify_frames:
+    name: Eagle Identifikations-Frames
+    description: Anzahl der Audioframes zur Analyse für die Identifikation
+  speaker_device_map:
+    name: Geräte-Sprecher-Zuordnung (JSON)
+    description: Geräte-IDs auf Sprechernamen abbilden (z.B. {"küche":"alice"})
+  speaker_config:
+    name: Sprecher-Konfiguration (JSON)
+    description: Sprecher-Metadaten (z.B. {"alice":{"displayName":"Alice","contextKey":"alice"}})
+  speaker_max_levels:
+    name: Sprecher-Maximallevel (JSON)
+    description: Maximales Sicherheitslevel pro Sprecher (z.B. {"alice":"owner"})
+  security_threshold_family:
+    name: Familie-Schwellenwert
+    description: Konfidenz-Schwellenwert für das Sicherheitslevel "Familie"
+  security_threshold_trusted:
+    name: Vertrauenswürdig-Schwellenwert
+    description: Konfidenz-Schwellenwert für das Sicherheitslevel "Vertrauenswürdig"
+  security_threshold_owner:
+    name: Eigentümer-Schwellenwert
+    description: Konfidenz-Schwellenwert für das Sicherheitslevel "Eigentümer"
+  tool_route_direct:
+    name: Direkte Werkzeug-Muster
+    description: Kommagetrennte Glob-Muster für direkt ausgeführte Werkzeuge
+  tool_route_reasoning:
+    name: Reasoning-Werkzeug-Muster
+    description: Kommagetrennte Glob-Muster für über Reasoning geroutete Werkzeuge
+  tool_route_dangerous:
+    name: Gefährliche Werkzeug-Muster
+    description: Kommagetrennte Glob-Muster für Werkzeuge, die eine Genehmigung erfordern
+  debug:
+    name: Debug-Modus
+    description: Ausführliches WebSocket-Logging aktivieren

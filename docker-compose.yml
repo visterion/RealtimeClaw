@@ -1,0 +1,12 @@
+services:
+  realtime-claw:
+    build: .
+    ports:
+      - "10300:10300"
+    env_file:
+      - .env
+    volumes:
+      - ./voiceprints:/app/voiceprints:ro
+      - ./SOUL.md:/app/SOUL.md:ro
+      - ./MEMORY.md:/app/MEMORY.md:rw
+    restart: unless-stopped
