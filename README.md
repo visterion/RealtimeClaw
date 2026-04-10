@@ -1,34 +1,31 @@
 # RealtimeClaw
 
-> Wyoming Protocol to Realtime Speech-to-Speech API bridge for Home Assistant
+> [Wyoming Protocol](https://www.home-assistant.io/integrations/wyoming/) to Realtime Speech-to-Speech API bridge for Home Assistant
 
 RealtimeClaw connects Home Assistant voice pipelines to xAI, OpenAI, and Inworld
-Realtime Speech-to-Speech APIs over WebSocket. It delivers sub-1-second voice
-response latency with local speaker identification and security-filtered tool
-routing — turning any Voice PE satellite into a capable voice assistant.
+Realtime Speech-to-Speech APIs over WebSocket. Instead of the traditional
+STT → text-LLM → TTS pipeline, audio goes directly to a speech-to-speech model —
+delivering sub-1-second voice response latency with local speaker identification
+and security-filtered tool routing.
+
+Works standalone with Home Assistant, or paired with
+[OpenClaw](https://github.com/openclaw/openclaw) for personality, persistent
+memory, and advanced tool skills.
 
 ## Architecture
 
 ```mermaid
-flowchart LR
-    VPE["Voice PE<br/>(ESPHome)"]
-    HA["Home Assistant<br/>Assist Pipeline"]
-    RC["RealtimeClaw<br/>Wyoming TCP :10300"]
-    API["Realtime API<br/>(xAI / OpenAI)"]
-    Eagle["Eagle<br/>Speaker ID"]
-    Router["Tool Router<br/>direct / reasoning /<br/>dangerous"]
-    OC["OpenClaw / HA"]
+flowchart TD
+    VPE["Voice PE (ESPHome)"] -- "PCM 16kHz" --> HA["Home Assistant"]
+    HA -- "Wyoming" --> RC["RealtimeClaw :10300"]
+    RC -- "WebSocket" --> API["Realtime API (xAI / OpenAI)"]
+    API -- "audio + tool calls" --> RC
 
-    VPE -- "PCM 16kHz" --> HA
-    HA -- "Wyoming" --> RC
-    RC -- "WebSocket" --> API
-    API -- "audio + tools" --> RC
-    RC --> HA
-    HA --> VPE
-
-    RC --> Eagle
-    Eagle --> Router
-    Router --> OC
+    RC --> Eagle["Eagle Speaker ID"]
+    Eagle --> Router["Tool Router"]
+    Router -- "direct" --> HA_API["HA REST API"]
+    Router -- "reasoning" --> OC["OpenClaw Gateway"]
+    Router -- "dangerous" --> Block["Blocked / Approval"]
 ```
 
 All audio stays PCM 16 kHz S16_LE end to end — no resampling, no transcoding.
@@ -37,17 +34,29 @@ disconnect.
 
 ### Direct Voice PE Connection
 
-For true speech-to-speech (bypassing HA's STT → text-LLM → TTS pipeline), Voice PE
-devices can connect directly to RealtimeClaw using the
-[esphome-wyoming-client](https://github.com/visterion/esphome-wyoming-client)
-component:
+[Voice PE](https://www.home-assistant.io/voice_control/voice_remote_local_assistant/)
+satellites can also bypass HA entirely and connect straight to RealtimeClaw using
+[esphome-wyoming-client](https://github.com/visterion/esphome-wyoming-client),
+a custom ESPHome component that speaks Wyoming Protocol over TCP:
 
 ```mermaid
-flowchart LR
-    VPE["Voice PE"] -- "Wyoming TCP" --> RC["RealtimeClaw :10300"]
-    RC -- "WebSocket" --> API["xAI Realtime API"]
-    API --> RC --> VPE
+flowchart TD
+    VPE["Voice PE"]
+    RC["RealtimeClaw :10300"]
+    API["xAI Realtime API"]
+
+    VPE -- "Wyoming TCP" --> RC
+    RC -- "WebSocket" --> API
+    API --> RC
+    RC --> VPE
 ```
+
+## Prerequisites
+
+- [Home Assistant](https://www.home-assistant.io/) with the [Wyoming integration](https://www.home-assistant.io/integrations/wyoming/)
+- An API key from a supported provider — xAI gives $25 free credit at [console.x.ai](https://console.x.ai)
+- Optional: [OpenClaw](https://github.com/openclaw/openclaw) for personality, memory, and tool skills
+- Optional: [Picovoice](https://picovoice.ai/) access key for speaker identification (free tier: 100 min/month)
 
 ## Installation
 
@@ -161,11 +170,14 @@ Configure routes with `TOOL_ROUTE_DIRECT`, `TOOL_ROUTE_REASONING`, and
 
 ### OpenClaw Integration
 
-RealtimeClaw integrates with [OpenClaw](https://github.com/openclaw/openclaw) for
-personality, persistent memory, and tool execution:
+[OpenClaw](https://github.com/openclaw/openclaw) is an open-source AI gateway that
+manages your assistant's personality (SOUL.md), user profiles, persistent memory,
+and provides tool skills for Home Assistant, Paperless, calendars, and more.
+RealtimeClaw connects to OpenClaw for context and tool execution — but works fine
+without it (use HA Direct tools + addon config for personality instead).
 
 ```mermaid
-flowchart LR
+flowchart TD
     RC["RealtimeClaw"]
     OC["OpenClaw Gateway"]
 
@@ -181,6 +193,7 @@ flowchart LR
 
 ### Additional Features
 
+- **Audio pacing** — response audio is paced at real-time rate (1024 B / 32 ms) to prevent ESP32 buffer overflow
 - **Reconnect with backoff** — exponential backoff with jitter, per-provider retry parameters
 - **Latency tracking** — TTFA (Time To First Audio) logged per session
 - **Barge-in** — interrupting mid-response cancels the current response immediately
@@ -233,6 +246,10 @@ src/
 tests/                   # vitest: unit + integration (251 tests, 13 E2E)
 addon/                   # Home Assistant addon (config, Dockerfile, docs)
 ```
+
+## Contributing
+
+See [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines.
 
 ## License
 
