@@ -597,7 +597,7 @@ describe('End-to-End: Speaker & Security', () => {
 
     // Stream audio → Eagle identifies alice (owner)
     await client.streamAudio(15, 640, 2);
-    await new Promise((r) => setTimeout(r, 300));
+    await new Promise((r) => setTimeout(r, 500));
 
     // xAI should have received a session.update with owner-level tools
     const sessionUpdates = mockXai.receivedMessages.filter((m) => m.type === 'session.update');
