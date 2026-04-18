@@ -374,27 +374,25 @@ describe('End-to-End Integration', () => {
     client.destroy();
   });
 
-  it('E2E-4: Memory update with speaker tags after conversation turn', async () => {
-    const spy = vi.spyOn(mockOpenClaw, 'updateMemory');
+  it('E2E-4: Knowledge turn (no tool call) is forwarded to OpenClaw.ask()', async () => {
+    const spy = vi.spyOn(mockOpenClaw, 'ask');
     const client = new E2EWyomingClient(WY_PORT);
     await client.connect();
 
     await client.streamAudio(10, 640, 2);
     await new Promise((r) => setTimeout(r, 200));
 
-    // Simulate VAD response with user transcript
-    mockXai.triggerVadWithTranscript('Mach das Licht an');
+    // Simulate VAD response with user transcript (no tool call triggered)
+    mockXai.triggerVadWithTranscript('Erzähl mir was über das Wetter');
     await new Promise((r) => setTimeout(r, 500));
 
-    // Wait for transcript to arrive at Wyoming client
     await client.waitForType('transcript', 2000);
     await new Promise((r) => setTimeout(r, 200));
 
-    // Verify: updateMemory called with transcripts
+    // Verify: ask called with user transcript
     expect(spy).toHaveBeenCalled();
-    const [transcripts] = spy.mock.calls[0];
-    expect(transcripts).toContainEqual(expect.objectContaining({ role: 'user', text: 'Mach das Licht an' }));
-    expect(transcripts).toContainEqual(expect.objectContaining({ role: 'assistant' }));
+    const [question] = spy.mock.calls[0];
+    expect(question).toBe('Erzähl mir was über das Wetter');
 
     client.destroy();
   });
@@ -770,7 +768,7 @@ describe('End-to-End: Conversation Flow', () => {
   });
 
   it('E2E-12: Multi-turn conversation — 3 turns with context maintained', async () => {
-    const memorySpy = vi.spyOn(mockOC, 'updateMemory');
+    const memorySpy = vi.spyOn(mockOC, 'ask');
     const client = new E2EWyomingClient(WY_PORT3);
     await client.connect();
 
@@ -796,7 +794,7 @@ describe('End-to-End: Conversation Flow', () => {
     mockXai.triggerVadWithTranscript('Dritte Frage');
     await client.waitForType('transcript', 2000);
 
-    // Verify: updateMemory called 3 times (once per turn)
+    // Verify: ask called 3 times (once per turn — no tool calls in these turns)
     expect(memorySpy.mock.calls.length).toBeGreaterThanOrEqual(3);
 
     client.destroy();

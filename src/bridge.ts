@@ -8,6 +8,7 @@ import { EagleAdapter, type IEagleFactory } from './speaker/eagle.js';
 import { SpeakerIdentifier } from './speaker/identifier.js';
 import { EnrollmentCollector } from './speaker/enrollment-collector.js';
 import { ENROLL_SPEAKER_TOOL } from './speaker/enrollment-tool.js';
+import { REQUEST_REASONING_TOOL } from './tools/reasoning-tool.js';
 import { getEffectiveLevel, type SecurityLevel } from './security/levels.js';
 import { filterToolsForLevel } from './security/permissions.js';
 import { ToolRouter } from './router/tool-router.js';
@@ -41,6 +42,8 @@ interface ActiveSession {
   securityLevel: SecurityLevel;
   lastUserTranscript: string;
   hadReasoning: boolean;
+  /** Set whenever xAI invokes any tool in the current turn; reset on new user transcript */
+  hadToolCall: boolean;
   latency: LatencyTracker;
   pcmAccumulator?: Buffer;
   audioDrainTimer?: ReturnType<typeof setInterval> | null;
@@ -48,6 +51,10 @@ interface ActiveSession {
   idleTimer?: ReturnType<typeof setTimeout> | null;
   /** Pending tool call results keyed by call_id; flushed on response.done */
   pendingToolCalls: Map<string, Promise<string>>;
+  /** Number of reasoning calls still in flight — idle timer is paused while > 0. */
+  pendingReasoning: number;
+  /** Monotonic id of the latest reasoning call; older ones are dropped when they return. */
+  reasoningGeneration: number;
   enrollmentCollector?: EnrollmentCollector;
 }
 
@@ -85,7 +92,8 @@ export class AudioBridge extends EventEmitter<BridgeEvents> {
     if (this.openclawClient) {
       const openclawTools = await this.openclawClient.getTools();
       this.availableTools.push(...openclawTools);
-      console.log(`[Bridge] Loaded ${this.availableTools.length} tools from OpenClaw`);
+      this.availableTools.push(REQUEST_REASONING_TOOL);
+      console.log(`[Bridge] Loaded ${openclawTools.length} tools from OpenClaw (+ request_reasoning)`);
     }
     if (this.haConfig) {
       const haTools = getHATools();
@@ -97,6 +105,10 @@ export class AudioBridge extends EventEmitter<BridgeEvents> {
       this.availableTools.push(ENROLL_SPEAKER_TOOL);
       console.log('[Bridge] Enrollment tool available');
     }
+
+    console.log(
+      `[Bridge] availableTools: [${this.availableTools.map((t) => t.name).join(', ')}]`,
+    );
 
     // Initialize Eagle speaker identification
     if (this.eagle) {
@@ -267,8 +279,11 @@ export class AudioBridge extends EventEmitter<BridgeEvents> {
       securityLevel: 'guest' as SecurityLevel,
       lastUserTranscript: '',
       hadReasoning: false,
+      hadToolCall: false,
       latency: new LatencyTracker(),
       pendingToolCalls: new Map(),
+      pendingReasoning: 0,
+      reasoningGeneration: 0,
     };
   }
 
@@ -326,6 +341,27 @@ export class AudioBridge extends EventEmitter<BridgeEvents> {
 
     await realtimeClient.connectWithRetry(providerConfig.reconnect);
 
+    // Eagle may have upgraded security level while WS was still connecting —
+    // re-filter tools and re-inject speaker context if needed.
+    if (active.securityLevel !== securityLevel) {
+      const upgradedTools = filterToolsForLevel(
+        this.availableTools,
+        active.securityLevel,
+        this.config.toolRouter.levelTools,
+      );
+      realtimeClient.updateSession({ tools: upgradedTools });
+    }
+    if (active.speakerId && active.speakerId !== speakerId) {
+      const ctx = this.speakerResolver.buildSpeakerContext(active.speakerId);
+      if (ctx) {
+        realtimeClient.sendConversationItem({
+          type: 'message',
+          role: 'system',
+          content: [{ type: 'text', text: ctx }],
+        });
+      }
+    }
+
     active.latency.mark('realtime_connected');
     const connectMs = active.latency.measureBetween('session_start', 'realtime_connected');
 
@@ -334,13 +370,41 @@ export class AudioBridge extends EventEmitter<BridgeEvents> {
     } else {
       console.log(`[Bridge] Realtime connected for ${session.id} in ${connectMs}ms`);
     }
+    console.log(
+      `[Bridge] Tools sent to xAI (${session.id}, level=${active.securityLevel}): [${sessionTools.map((t) => t.name).join(', ')}]`,
+    );
+    const instrPreview = instructions.replace(/\s+/g, ' ').slice(0, 240);
+    console.log(
+      `[Bridge] Instructions (${session.id}, ${instructions.length} chars): ${instrPreview}${instructions.length > 240 ? '…' : ''}`,
+    );
     this.emit('session:connected', session.id);
     this.resetIdleTimer(active, session.id);
   }
 
-  private static readonly IDLE_TIMEOUT_MS = 15_000;
+  private static readonly IDLE_TIMEOUT_MS = 30_000;
+
+  /** Inject a late OpenClaw reasoning reply and trigger a follow-up xAI response. */
+  private injectReasoningReply(active: ActiveSession, sessionId: string, reply: string): void {
+    active.pendingReasoning = Math.max(0, active.pendingReasoning - 1);
+    if (!this.activeSessions.has(sessionId)) {
+      // Session has gone away — nothing to say.
+      return;
+    }
+    console.log(`[Bridge] Reasoning reply (${sessionId}): ${reply.slice(0, 200)}`);
+    active.realtimeClient.sendConversationItem({
+      type: 'message',
+      role: 'system',
+      content: [{ type: 'text', text: `[Antwort von Jarvis für die letzte Frage]:\n${reply}` }],
+    });
+    active.realtimeClient.createResponse();
+    // Resume idle timer once all pending reasoning is done.
+    if (active.pendingReasoning === 0) {
+      this.resetIdleTimer(active, sessionId);
+    }
+  }
 
   private resetIdleTimer(active: ActiveSession, sessionId: string): void {
+    if (active.pendingReasoning > 0) return;
     if (active.idleTimer) clearTimeout(active.idleTimer);
     active.idleTimer = setTimeout(() => {
       console.log(`[Bridge] Session idle for ${AudioBridge.IDLE_TIMEOUT_MS / 1000}s, closing (${sessionId})`);
@@ -465,16 +529,33 @@ export class AudioBridge extends EventEmitter<BridgeEvents> {
     // Track turns for summarization
     active.summarizer.addTurn('assistant', text);
 
-    // Async memory update via OpenClaw (fire-and-forget) with speaker tags
-    if (this.openclawClient && active.lastUserTranscript) {
-      const transcripts = [
-        { role: 'user', text: active.lastUserTranscript, speaker: active.speakerId },
-        { role: 'assistant', text },
-      ];
-      const speakers = active.speakerId ? [active.speakerId] : [];
-      this.openclawClient.updateMemory(transcripts, speakers).catch((err) => {
-        console.warn('[Bridge] Memory update failed:', (err as Error).message);
-      });
+    // Forward knowledge-type turns to OpenClaw: skip pure smart-home tool calls,
+    // fire-and-forget so Jarvis can remember/reason about conversation turns.
+    const sid2 = active.wyomingSession.id;
+    const willForward = !!this.openclawClient && !!active.lastUserTranscript && !active.hadToolCall;
+    console.log(
+      `[Bridge] Turn end (${sid2}): hadToolCall=${active.hadToolCall}, forwardToOpenClaw=${willForward}`,
+    );
+    if (this.openclawClient && active.lastUserTranscript && !active.hadToolCall) {
+      const sid = active.wyomingSession.id;
+      const speakerInfo = active.speakerId
+        ? this.speakerResolver.getSpeakerInfo(active.speakerId)
+        : null;
+      const recentContext = active.summarizer.getRecentTurns(5);
+      this.openclawClient
+        .ask(active.lastUserTranscript, {
+          sessionId: sid,
+          speakerId: active.speakerId,
+          speakerName: speakerInfo?.displayName,
+          securityLevel: active.securityLevel,
+          recentContext,
+        })
+        .then((reply) => {
+          console.log(`[Bridge] OpenClaw forward (${sid}): ${reply.slice(0, 200)}`);
+        })
+        .catch((err) => {
+          console.warn(`[Bridge] OpenClaw forward failed (${sid}):`, (err as Error).message);
+        });
     }
 
     // Check if summarization is needed
@@ -491,13 +572,20 @@ export class AudioBridge extends EventEmitter<BridgeEvents> {
 
   private handleServerEvent(active: ActiveSession, event: { type: string; transcript?: string }): void {
     if (event.type === 'conversation.item.input_audio_transcription.completed' && event.transcript) {
+      const sid = active.wyomingSession.id;
+      active.reasoningGeneration += 1;
+      console.log(
+        `[Bridge] User turn (${sid}, gen=${active.reasoningGeneration}): ${event.transcript}`,
+      );
       active.lastUserTranscript = event.transcript;
+      active.hadToolCall = false;
       active.summarizer.addTurn('user', event.transcript);
     }
   }
 
   private handleFunctionCall(active: ActiveSession, sessionId: string, callId: string, name: string, args: string): void {
     console.log(`[Bridge] Function call (${sessionId}): ${name}(${args})`);
+    active.hadToolCall = true;
     // Store the result promise — all results are flushed together on response.done
     const resultPromise = this.executeFunctionCall(active, sessionId, name, args).catch((err) => {
       console.error(`[Bridge] Unhandled tool error (${sessionId}):`, (err as Error).message);
@@ -565,8 +653,12 @@ export class AudioBridge extends EventEmitter<BridgeEvents> {
     // HA direct tools — bypass ToolRouter, execute immediately
     const haToolNames = ['light_control', 'get_state', 'call_service', 'list_entities'];
     if (this.haConfig && haToolNames.includes(name)) {
-      console.log(`[Bridge] HA direct: ${name}(${JSON.stringify(parsedArgs)}) (${sessionId})`);
+      console.log(`[Bridge] HA direct call (${sessionId}): ${name}(${JSON.stringify(parsedArgs)})`);
+      const start = Date.now();
       const result = await executeHATool(this.haConfig, name, parsedArgs);
+      console.log(
+        `[Bridge] HA direct result (${sessionId}, ${Date.now() - start}ms): ${result.slice(0, 200)}`,
+      );
       return result;
     }
 
@@ -599,20 +691,70 @@ export class AudioBridge extends EventEmitter<BridgeEvents> {
 
         case 'reasoning': {
           active.hadReasoning = true;
+          active.pendingReasoning += 1;
+          // Capture the turn generation at call time. Any reply that returns after
+          // a newer user turn arrived will be dropped to avoid cascading responses.
+          const myGen = active.reasoningGeneration;
+          if (active.idleTimer) {
+            clearTimeout(active.idleTimer);
+            active.idleTimer = null;
+            console.log(`[Bridge] Idle timer paused (${sessionId}, pendingReasoning=${active.pendingReasoning})`);
+          }
           const speakerInfo = active.speakerId
             ? this.speakerResolver.getSpeakerInfo(active.speakerId)
             : null;
           const recentTurns = active.summarizer.getRecentTurns(5);
-          return await this.openclawClient.ask(
-            (parsedArgs.question as string) ?? JSON.stringify(parsedArgs),
-            {
+          const question = (parsedArgs.question as string) ?? JSON.stringify(parsedArgs);
+          const startedAt = Date.now();
+          console.log(`[Bridge] Reasoning start (${sessionId}, gen=${myGen}): question="${question}"`);
+          const client = this.openclawClient;
+          client
+            .ask(question, {
               sessionId,
               speakerId: active.speakerId,
               speakerName: speakerInfo?.displayName,
               securityLevel: active.securityLevel,
               recentContext: recentTurns,
-            },
-          );
+            })
+            .then((reply) => {
+              const elapsed = Date.now() - startedAt;
+              if (myGen !== active.reasoningGeneration) {
+                active.pendingReasoning = Math.max(0, active.pendingReasoning - 1);
+                console.log(
+                  `[Bridge] Reasoning stale, dropped (${sessionId}, gen=${myGen} vs current=${active.reasoningGeneration}, ${elapsed}ms)`,
+                );
+                if (active.pendingReasoning === 0) this.resetIdleTimer(active, sessionId);
+                return;
+              }
+              console.log(`[Bridge] Reasoning done (${sessionId}, gen=${myGen}, ${elapsed}ms)`);
+              this.injectReasoningReply(active, sessionId, reply);
+            })
+            .catch((err) => {
+              const elapsed = Date.now() - startedAt;
+              if (myGen !== active.reasoningGeneration) {
+                active.pendingReasoning = Math.max(0, active.pendingReasoning - 1);
+                console.warn(
+                  `[Bridge] Reasoning stale, error dropped (${sessionId}, gen=${myGen}, ${elapsed}ms):`,
+                  (err as Error).message,
+                );
+                if (active.pendingReasoning === 0) this.resetIdleTimer(active, sessionId);
+                return;
+              }
+              console.warn(
+                `[Bridge] Reasoning failed (${sessionId}, gen=${myGen}, ${elapsed}ms):`,
+                (err as Error).message,
+              );
+              this.injectReasoningReply(
+                active,
+                sessionId,
+                `Jarvis konnte nicht antworten: ${(err as Error).message}`,
+              );
+            });
+          console.log(`[Bridge] Reasoning stub returned to xAI (${sessionId}, gen=${myGen}) — response expected later`);
+          return JSON.stringify({
+            status: 'pending',
+            hint: 'Sag dem Nutzer nur in EINEM kurzen Satz, dass du nachdenkst (z.B. "Moment."). Die echte Antwort kommt gleich als System-Nachricht. Erfinde KEINE Inhalte selbst und rufe KEIN Tool erneut auf bis die System-Nachricht kam.',
+          });
         }
 
         case 'dangerous': {

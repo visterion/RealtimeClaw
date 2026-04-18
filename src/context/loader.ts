@@ -17,14 +17,25 @@ export function buildInstructions(
 ): string {
   const parts: string[] = [];
 
-  if (base.instructions) {
-    parts.push(base.instructions);
-  } else if (fallbackInstructions) {
-    parts.push(fallbackInstructions);
+  // Operating rules FIRST: language lock, routing, voice format. Putting them
+  // at the top (and re-anchoring tool behaviour in tool descriptions) prevents
+  // the persona — which may be largely English — from dominating the session.
+  if (fallbackInstructions) {
+    parts.push(`## Operating rules\n${fallbackInstructions}`);
   }
 
+  // Then: who is being spoken to.
   if (speakerContext) {
     parts.push(`## Current Speaker\n${speakerContext}`);
+  }
+
+  if (base.memoryContent) {
+    parts.push(`## Who you're talking to\n${base.memoryContent}`);
+  }
+
+  // Persona (SOUL) last — defines vibe without overriding the rules above.
+  if (base.soulContent) {
+    parts.push(`## Persona\n${base.soulContent}`);
   }
 
   return parts.join('\n\n---\n\n');

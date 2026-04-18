@@ -66,6 +66,7 @@ export function loadConfig(): BridgeConfig {
       },
       inputAudioTranscription: {
         model: process.env.REALTIME_TRANSCRIPTION_MODEL ?? 'grok-2-audio',
+        language: process.env.REALTIME_TRANSCRIPTION_LANGUAGE ?? 'de',
       },
     },
     context: {
