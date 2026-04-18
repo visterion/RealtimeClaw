@@ -1,5 +1,6 @@
 # RealtimeClaw
-<img width="1748" height="1263" alt="image" src="https://github.com/user-attachments/assets/a82e7c6b-894b-4ea7-8d88-b03e0a964e94" />
+<img width="1024" height="434" alt="image" src="https://github.com/user-attachments/assets/2c17ca96-47de-4de0-a9c1-bc847675019a" />
+
 
 
 
