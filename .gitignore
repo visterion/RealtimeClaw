@@ -3,6 +3,13 @@ dist/
 *.tsbuildinfo
 .env
 
+# Device-specific ESPHome configs (real IPs, MACs, WiFi/API/OTA secrets).
+# Only example.yaml is committed as a template; per-device files stay local.
+firmware/voice-pe-*.yaml
+firmware/secrets.yaml
+firmware/*.secret.yaml
+!firmware/example.yaml
+
 # Internal / AI agent files
 CLAUDE.md
 AGENTS.md
