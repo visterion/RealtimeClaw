@@ -1,4 +1,7 @@
 # RealtimeClaw
+<img width="1748" height="1263" alt="image" src="https://github.com/user-attachments/assets/a82e7c6b-894b-4ea7-8d88-b03e0a964e94" />
+
+
 
 > [Wyoming Protocol](https://www.home-assistant.io/integrations/wyoming/) to Realtime Speech-to-Speech API bridge for Home Assistant
 
