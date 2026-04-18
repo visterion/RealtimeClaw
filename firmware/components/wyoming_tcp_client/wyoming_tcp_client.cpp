@@ -60,7 +60,8 @@ void WyomingTcpClient::spk_task_loop_() {
   // Wait for pre-buffer threshold
   ESP_LOGI(TAG, "Speaker task: waiting for %zu bytes pre-buffer", PRE_BUFFER_BYTES);
   while (this->spk_buffer_->available() < PRE_BUFFER_BYTES) {
-    if (this->audio_done_ || this->state_ == State::ERROR) {
+    if (this->audio_done_ || this->state_ == State::ERROR ||
+        this->state_ == State::IDLE) {
       // Audio ended before we got enough to pre-buffer — play what we have
       if (this->spk_buffer_->available() > 0) break;
       ESP_LOGI(TAG, "Speaker task: session ended before pre-buffer filled");
@@ -102,9 +103,18 @@ void WyomingTcpClient::spk_task_loop_() {
 }
 
 void WyomingTcpClient::start() {
-  if (this->state_ != State::IDLE) {
-    ESP_LOGW(TAG, "Already active, ignoring start");
+  // Allow restart from IDLE or ERROR. ERROR is treated as recoverable so a
+  // transient network failure (e.g. server restart) doesn't require a power
+  // cycle — the next wake word simply opens a fresh session.
+  if (this->state_ != State::IDLE && this->state_ != State::ERROR) {
+    ESP_LOGW(TAG, "Already active (state=%d), ignoring start",
+             static_cast<int>(this->state_.load()));
     return;
+  }
+
+  if (this->state_ == State::ERROR) {
+    ESP_LOGI(TAG, "Recovering from ERROR state");
+    this->disconnect_();
   }
 
   ESP_LOGI(TAG, "Starting session");
@@ -169,6 +179,10 @@ void WyomingTcpClient::disconnect_() {
 bool WyomingTcpClient::send_event_(const char *type, const char *data_json,
                                     const uint8_t *payload,
                                     size_t payload_len) {
+  if (this->sock_ < 0) {
+    return false;  // Socket already closed — avoid send on -1
+  }
+
   char header[256];
   int header_len;
 
@@ -245,10 +259,13 @@ void WyomingTcpClient::net_task_(void *param) {
 }
 
 void WyomingTcpClient::net_task_loop_() {
-  // Phase 1: Connect
+  // Phase 1: Connect. A failure here must still return the component to IDLE
+  // so the next wake word can try again — otherwise a single missed connect
+  // (e.g. server not yet up at boot) would jam the client until reboot.
   if (!this->connect_()) {
-    ESP_LOGE(TAG, "Connection failed, entering ERROR state");
-    this->state_ = State::ERROR;
+    ESP_LOGE(TAG, "Connection failed, returning to IDLE");
+    this->state_ = State::IDLE;
+    this->net_task_handle_ = nullptr;
     return;
   }
 
@@ -274,17 +291,19 @@ void WyomingTcpClient::net_task_loop_() {
         if (!this->send_event_("audio-chunk",
                           "{\"rate\":16000,\"width\":2,\"channels\":1}",
                           chunk, sizeof(chunk))) {
-          ESP_LOGE(TAG, "Failed to send audio chunk");
+          ESP_LOGE(TAG, "Failed to send audio chunk, connection lost");
           this->state_ = State::ERROR;
           break;
         }
       }
+    }
 
-      // Check idle timeout — close session if no activity for 15s
-      if (millis() - this->last_activity_ms_ > SESSION_TIMEOUT_MS) {
-        ESP_LOGI(TAG, "Session idle for %lums, closing", SESSION_TIMEOUT_MS);
-        break;
-      }
+    // Idle timeout applies in every active state. Without this, a server
+    // that drops the TCP connection during RECEIVING would trap us in the
+    // loop forever (no sends happen in RECEIVING, so send errors never fire).
+    if (millis() - this->last_activity_ms_ > SESSION_TIMEOUT_MS) {
+      ESP_LOGI(TAG, "Session idle for %lums, closing", SESSION_TIMEOUT_MS);
+      break;
     }
 
     // After response audio finishes, resume streaming mic audio
@@ -295,12 +314,21 @@ void WyomingTcpClient::net_task_loop_() {
       ESP_LOGI(TAG, "Response done, resuming mic streaming for next turn");
     }
 
-    this->receive_events_();
+    // Peer-close detection: receive_events_ returns false when recv reads
+    // 0 bytes (peer FIN) or a real socket error — treat as connection lost.
+    if (!this->receive_events_()) {
+      ESP_LOGW(TAG, "Receive failed, connection lost");
+      this->state_ = State::ERROR;
+      break;
+    }
     vTaskDelay(pdMS_TO_TICKS(10));
   }
 
-  // Phase 4: Cleanup
-  this->send_audio_stop_();
+  // Phase 4: Cleanup — always ends with state_ = IDLE so the next wake word
+  // can open a fresh session, even after a network error.
+  if (this->sock_ >= 0) {
+    this->send_audio_stop_();  // best-effort; no-op if socket already gone
+  }
   this->disconnect_();
   this->mic_source_->stop();
 
@@ -318,6 +346,7 @@ void WyomingTcpClient::net_task_loop_() {
   }
 
   this->state_ = State::IDLE;
+  this->net_task_handle_ = nullptr;
   ESP_LOGI(TAG, "Session ended");
 }
 
@@ -435,6 +464,7 @@ bool WyomingTcpClient::receive_events_() {
   }
 
   this->handle_received_event_(type, data_json, payload);
+  this->last_activity_ms_ = millis();  // Any inbound byte resets idle timer
   return true;
 }
 
