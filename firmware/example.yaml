@@ -1,0 +1,73 @@
+# Example: Voice PE with Wyoming TCP Client
+# Connects directly to RealtimeClaw for sub-1s speech-to-speech
+#
+# Replace the stock voice_assistant with this component.
+# Keep micro_wake_word and change its action to wyoming_tcp_client.start.
+
+substitutions:
+  wyoming_host: "192.168.178.150"
+  wyoming_port: "10300"
+
+external_components:
+  - source:
+      type: local
+      path: components
+    components: [wyoming_tcp_client]
+
+# -- Audio hardware (Voice PE defaults) --
+i2s_audio:
+  - id: i2s_input
+    i2s_lrclk_pin: GPIO14
+    i2s_bclk_pin: GPIO13
+  - id: i2s_output
+    i2s_lrclk_pin: GPIO7
+    i2s_bclk_pin: GPIO8
+
+microphone:
+  - platform: i2s_audio
+    id: i2s_mics
+    i2s_din_pin: GPIO15
+    adc_type: external
+    pdm: false
+    sample_rate: 16000
+    bits_per_sample: 32bit
+    i2s_mode: secondary
+    i2s_audio_id: i2s_input
+    channel: stereo
+
+speaker:
+  - platform: i2s_audio
+    id: i2s_audio_speaker
+    sample_rate: 16000
+    i2s_mode: secondary
+    i2s_dout_pin: GPIO10
+    bits_per_sample: 32bit
+    i2s_audio_id: i2s_output
+    dac_type: external
+    channel: stereo
+    timeout: never
+    buffer_duration: 100ms
+
+# -- Wake word detection --
+micro_wake_word:
+  id: mww
+  microphone:
+    microphone: i2s_mics
+    channels: 1
+    gain_factor: 4
+  models:
+    - model: okay_nabu
+      id: okay_nabu
+  on_wake_word_detected:
+    - wyoming_tcp_client.start
+
+# -- Wyoming TCP Client (replaces voice_assistant) --
+wyoming_tcp_client:
+  id: wyoming_client
+  host: ${wyoming_host}
+  port: ${wyoming_port}
+  microphone:
+    microphone: i2s_mics
+    channels: 0
+    gain_factor: 4
+  speaker: i2s_audio_speaker
