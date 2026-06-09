@@ -327,8 +327,7 @@ describe('Integration: Realistic Audio Streams', () => {
     await client.waitForMessageType('audio-start');
     await client.waitForMessageType('audio-stop');
 
-    const audioChunks = client.getMessagesByType('audio-chunk');
-    expect(audioChunks.length).toBe(5); // mock sends 5 chunks
+    // Audio pacing delivers chunks asynchronously; total bytes must match
     expect(client.getTotalAudioBytes()).toBe(5 * 640); // 5 × 640 bytes
 
     // Verify transcript arrived

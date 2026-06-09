@@ -5,9 +5,8 @@
 If you discover a security vulnerability in RealtimeClaw, please report it
 responsibly. **Do not open a public issue.**
 
-Email: **security@ufelmann.dev**
-
-Or use [GitHub's private vulnerability reporting](https://github.com/ufelmann/RealtimeClaw/security/advisories/new).
+Use [GitHub's private vulnerability reporting](https://github.com/ufelmann/RealtimeClaw/security/advisories/new)
+to submit a report. Only you and the maintainers can see it.
 
 You will receive an acknowledgment within 48 hours and a detailed response
 within 7 days.
