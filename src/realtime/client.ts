@@ -157,7 +157,7 @@ export class RealtimeClient extends EventEmitter<RealtimeClientEvents> {
       instructions: string;
       turn_detection: TurnDetection;
       audio: { input: { format: AudioFormat }; output: { format: AudioFormat } };
-      input_audio_transcription?: { model: string };
+      input_audio_transcription?: { model: string; language?: string };
       tools?: RealtimeTool[];
     } = {
       voice: this.config.voice,
@@ -177,7 +177,26 @@ export class RealtimeClient extends EventEmitter<RealtimeClientEvents> {
 
   private send(data: object): void {
     if (!this.ws || this.ws.readyState !== WebSocket.OPEN) return;
-    this.ws.send(JSON.stringify(data));
+    const payload = JSON.stringify(data);
+    if (this.debug) {
+      const type = (data as { type?: string }).type ?? '<no-type>';
+      // audio chunks are too noisy — summarize
+      if (type === 'input_audio_buffer.append') {
+        const audio = (data as { audio?: string }).audio ?? '';
+        console.log(`[Realtime→xAI:debug] ${type} (audio ${audio.length}b base64)`);
+      } else if (type === 'session.update') {
+        const s = (data as { session?: Record<string, unknown> }).session ?? {};
+        const tools = Array.isArray(s.tools) ? (s.tools as Array<{ name: string }>).map((t) => t.name) : [];
+        const instr = typeof s.instructions === 'string' ? s.instructions : '';
+        console.log(
+          `[Realtime→xAI:debug] session.update: instructions=${instr.length}chars, tools=[${tools.join(', ')}], voice=${String(s.voice)}`,
+        );
+        console.log(`[Realtime→xAI:debug] full payload: ${payload}`);
+      } else {
+        console.log(`[Realtime→xAI:debug] ${type}: ${payload.slice(0, 1000)}${payload.length > 1000 ? '…' : ''}`);
+      }
+    }
+    this.ws.send(payload);
   }
 
   private setupListeners(ws: WebSocket): void {
@@ -206,7 +225,8 @@ export class RealtimeClient extends EventEmitter<RealtimeClientEvents> {
 
   private handleServerEvent(event: RealtimeServerEvent): void {
     if (this.debug) {
-      console.log(`[Realtime:debug] ${event.type}`, JSON.stringify(event).slice(0, 200));
+      const body = JSON.stringify(event);
+      console.log(`[Realtime:debug] ${event.type} ${body.slice(0, 1200)}${body.length > 1200 ? '…' : ''}`);
     }
 
     switch (event.type) {
