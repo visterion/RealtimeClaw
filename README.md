@@ -1,4 +1,8 @@
 # RealtimeClaw
+<img width="1024" height="434" alt="image" src="https://github.com/user-attachments/assets/2c17ca96-47de-4de0-a9c1-bc847675019a" />
+
+
+
 
 > [Wyoming Protocol](https://www.home-assistant.io/integrations/wyoming/) to Realtime Speech-to-Speech API bridge for Home Assistant
 
@@ -36,8 +40,8 @@ disconnect.
 
 [Voice PE](https://www.home-assistant.io/voice_control/voice_remote_local_assistant/)
 satellites can also bypass HA entirely and connect straight to RealtimeClaw using
-[esphome-wyoming-client](https://github.com/ufelmann/esphome-wyoming-client),
-a custom ESPHome component that speaks Wyoming Protocol over TCP:
+the bundled ESPHome component in [`firmware/`](./firmware), which speaks Wyoming
+Protocol over TCP:
 
 ```mermaid
 flowchart TD
@@ -243,8 +247,11 @@ src/
   tools/                 # OpenClaw client, HA direct, reasoning tool
   speaker/               # Eagle speaker ID, enrollment, voiceprint management
   session/               # session flush / memory persistence
-tests/                   # vitest: unit + integration (251 tests, 13 E2E)
+tests/                   # vitest: unit + integration (295 tests, 13 E2E)
 addon/                   # Home Assistant addon (config, Dockerfile, docs)
+firmware/                # ESPHome custom component for direct Voice PE → bridge
+  components/            # wyoming_tcp_client C++ / Python component
+  example.yaml           # reference ESPHome YAML for a Voice PE
 ```
 
 ## Contributing

@@ -78,6 +78,7 @@ export type WyomingMessage = WyomingAudioStart | WyomingAudioChunk | WyomingAudi
 
 export interface InputAudioTranscription {
   model: string;
+  language?: string;
 }
 
 export interface RealtimeConfig {
