@@ -47,10 +47,10 @@
   ],
   "license": "MIT",
   "dependencies": {
-    "ws": "^8.18.0"
+    "ws": "^8.21.3"
   },
   "optionalDependencies": {
-    "@picovoice/eagle-node": "^3.0.0"
+    "@picovoice/eagle-node": "^3.0.1"
   },
   "devDependencies": {
     "@types/node": "^22.0.0",
@@ -63,6 +63,6 @@
     "vitest": "^4.1.10"
   },
   "engines": {
-    "node": ">=20.0.0"
+    "node": ">=20.19.0"
   }
 }
