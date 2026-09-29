@@ -1,6 +1,6 @@
 // tests/router/tool-router.test.ts
 import { describe, it, expect } from 'vitest';
-import { ToolRouter, type ToolType } from '../../src/router/tool-router.js';
+import { ToolRouter } from '../../src/router/tool-router.js';
 
 describe('ToolRouter', () => {
   const router = new ToolRouter({

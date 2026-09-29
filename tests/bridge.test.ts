@@ -2,7 +2,7 @@ import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import net from 'node:net';
 import { WebSocketServer, WebSocket } from 'ws';
 import { AudioBridge } from '../src/bridge.js';
-import { audioStart, audioChunk, audioStop } from '../src/wyoming/protocol.js';
+import { audioStart, audioChunk } from '../src/wyoming/protocol.js';
 import { createTestConfig } from './helpers.js';
 
 describe('AudioBridge', () => {

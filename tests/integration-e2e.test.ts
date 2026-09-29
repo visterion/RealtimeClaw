@@ -700,12 +700,6 @@ describe('End-to-End: Speaker & Security', () => {
     await client.streamAudio(50, 640, 2); // ~1.6s of audio
     await new Promise((r) => setTimeout(r, 500));
 
-    // Check: enroll_speaker result was sent back to xAI
-    const convItems = mockXai.receivedMessages.filter((m) => m.type === 'conversation.item.create');
-    const enrollResult = convItems.find((m) => {
-      const item = m.item as { output?: string };
-      return item?.output?.includes('charlie') || item?.output?.includes('success');
-    });
     // Enrollment may or may not have completed depending on timing — at minimum no crash
     expect(mockXai.receivedMessages.length).toBeGreaterThan(0);
 
@@ -756,10 +750,7 @@ describe('End-to-End: Conversation Flow', () => {
 
     // Before response finishes, send barge-in (new audio while responding)
     // The bridge should detect speech_started during response → cancel
-    const ws = (mockXai as unknown as { connections: WebSocket[] }).connections;
     // We can't easily simulate barge-in without the bridge detecting speech_started
-    // But we CAN verify response.cancel is in the protocol
-    const cancelMsgs = mockXai.receivedMessages.filter((m) => m.type === 'response.cancel');
     // Barge-in is triggered by speech_started during active response
     // This test at least verifies the conversation completes without crash
     await client.waitForType('transcript', 2000);
