@@ -17,7 +17,6 @@ describe('calculateBackoff', () => {
   });
 
   it('increases delay for higher attempts', () => {
-    const delays = Array.from({ length: 5 }, (_, i) => calculateBackoff(i, config));
     // On average, each delay should be larger than the previous (allow jitter)
     const avgFirst = (calculateBackoff(0, config) + calculateBackoff(0, config) + calculateBackoff(0, config)) / 3;
     const avgLast = (calculateBackoff(4, config) + calculateBackoff(4, config) + calculateBackoff(4, config)) / 3;

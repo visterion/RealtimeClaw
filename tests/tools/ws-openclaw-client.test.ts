@@ -79,7 +79,7 @@ describe('WsOpenClawClient', () => {
 
     it('B4: WS connection error falls back to HTTP', async () => {
       // No server running on this port
-      const fetchSpy = vi.spyOn(globalThis, 'fetch')
+      vi.spyOn(globalThis, 'fetch')
         .mockResolvedValueOnce({ ok: true, status: 200, json: async () => ({ ok: true, result: 'fallback' }) } as Response)
         .mockResolvedValueOnce({ ok: true, status: 200, json: async () => ({ ok: true, result: { text: 'mem' } }) } as Response);
 
@@ -187,7 +187,7 @@ describe('WsOpenClawClient', () => {
     });
 
     it('B8: ask delegates to HTTP client', async () => {
-      const fetchSpy = vi.spyOn(globalThis, 'fetch')
+      vi.spyOn(globalThis, 'fetch')
         .mockResolvedValueOnce({
           ok: true, status: 200,
           json: async () => ({ choices: [{ message: { content: 'The answer is 42.' } }] }),

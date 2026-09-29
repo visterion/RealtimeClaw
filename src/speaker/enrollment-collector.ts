@@ -24,6 +24,8 @@ export class EnrollmentCollector {
 
     this.result = new Promise((resolve) => { this.resolveResult = resolve; });
     this.timer = setTimeout(() => this.complete(), durationMs);
+    // Module-level singleton guard, not a closure alias.
+    // eslint-disable-next-line @typescript-eslint/no-this-alias
     activeCollector = this;
   }
 
