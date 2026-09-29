@@ -11,6 +11,17 @@ updates:
       # Drop this entry once a typescript-eslint release widens that range.
       - dependency-name: typescript
         versions: [">=6.1"]
+      # The code runs on Node 20: addon/Dockerfile and Dockerfile use
+      # node:20-slim, ci.yml uses node-version 20. @types/node must not run
+      # ahead of that runtime (22 is already one major ahead; don't widen the
+      # gap). Raise this bound together with the Node base image and CI.
+      - dependency-name: "@types/node"
+        versions: [">=23"]
+      # vitest 5 declares engines.node "^22.12.0 || ^24.0.0 || >=26.0.0",
+      # so it does not support the Node 20 runtime/CI. Drop this entry when
+      # the Node base image and CI move to 22.12+.
+      - dependency-name: vitest
+        versions: [">=5"]
 
   - package-ecosystem: github-actions
     directory: /
