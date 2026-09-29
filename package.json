@@ -50,7 +50,7 @@
     "ws": "^8.21.3"
   },
   "optionalDependencies": {
-    "@picovoice/eagle-node": "^3.0.0"
+    "@picovoice/eagle-node": "^3.0.1"
   },
   "devDependencies": {
     "@types/node": "^22.0.0",
